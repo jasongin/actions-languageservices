@@ -166,6 +166,7 @@ export function initConnection(connection: Connection) {
       return await hover(getDocument(documents, textDocument), position, {
         descriptionProvider: descriptionProvider(client, cache),
         contextProviderConfig: repoContext && contextProviders(client, repoContext, cache),
+        featureFlags,
         fileProvider: getFileProvider(client, cache, repoContext?.workspaceUri, async path => {
           return await connection.sendRequest(Requests.ReadFile, {path});
         })
@@ -182,12 +183,12 @@ export function initConnection(connection: Connection) {
 
   connection.onDocumentLinks(async ({textDocument}: DocumentLinkParams): Promise<DocumentLink[] | null> => {
     const repoContext = repos.find(repo => textDocument.uri.startsWith(repo.workspaceUri));
-    return documentLinks(getDocument(documents, textDocument), repoContext?.workspaceUri);
+    return documentLinks(getDocument(documents, textDocument), repoContext?.workspaceUri, featureFlags);
   });
 
   connection.languages.inlayHint.on(async ({textDocument}: InlayHintParams): Promise<InlayHint[] | null> => {
     return timeOperation("inlayHints", () => {
-      return getInlayHints(getDocument(documents, textDocument));
+      return getInlayHints(getDocument(documents, textDocument), featureFlags);
     });
   });
 

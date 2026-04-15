@@ -1,3 +1,4 @@
+import type {FeatureFlags} from "@actions/expressions/features";
 import {ErrorPolicy} from "@actions/workflow-parser/model/convert";
 import {isJob, isReusableWorkflowJob} from "@actions/workflow-parser/model/type-guards";
 import {File} from "@actions/workflow-parser/workflows/file";
@@ -18,7 +19,11 @@ import {
 /**
  * Generates clickable links for action references and reusable workflows.
  */
-export async function documentLinks(document: TextDocument, workspace: string | undefined): Promise<DocumentLink[]> {
+export async function documentLinks(
+  document: TextDocument,
+  workspace: string | undefined,
+  featureFlags?: FeatureFlags
+): Promise<DocumentLink[]> {
   const file: File = {
     name: document.uri,
     content: document.getText()
@@ -26,7 +31,7 @@ export async function documentLinks(document: TextDocument, workspace: string | 
 
   return isActionDocument(document.uri)
     ? actionDocumentLinks(file, document.uri)
-    : workflowDocumentLinks(file, document.uri, workspace);
+    : workflowDocumentLinks(file, document.uri, workspace, featureFlags);
 }
 
 /**
@@ -73,14 +78,20 @@ function actionDocumentLinks(file: File, uri: string): DocumentLink[] {
 /**
  * Generates clickable links for action references and reusable workflows in workflow files.
  */
-async function workflowDocumentLinks(file: File, uri: string, workspace: string | undefined): Promise<DocumentLink[]> {
-  const parsedWorkflow = getOrParseWorkflow(file, uri);
+async function workflowDocumentLinks(
+  file: File,
+  uri: string,
+  workspace: string | undefined,
+  featureFlags?: FeatureFlags
+): Promise<DocumentLink[]> {
+  const parsedWorkflow = getOrParseWorkflow(file, uri, false, featureFlags);
   if (!parsedWorkflow?.value) {
     return [];
   }
 
   const template = await getOrConvertWorkflowTemplate(parsedWorkflow.context, parsedWorkflow.value, uri, undefined, {
-    errorPolicy: ErrorPolicy.TryConversion
+    errorPolicy: ErrorPolicy.TryConversion,
+    featureFlags
   });
 
   const links: DocumentLink[] = [];

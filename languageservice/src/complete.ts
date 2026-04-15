@@ -88,12 +88,12 @@ export async function complete(
   // Parse the document
   const parsedTemplate = isAction
     ? getOrParseAction(file, textDocument.uri, true)
-    : getOrParseWorkflow(file, textDocument.uri, true);
+    : getOrParseWorkflow(file, textDocument.uri, true, config?.featureFlags);
   if (!parsedTemplate.value) {
     return [];
   }
 
-  const schema = isAction ? getActionSchema() : getWorkflowSchema();
+  const schema = isAction ? getActionSchema() : getWorkflowSchema(config?.featureFlags);
   const {token, keyToken, parent, path} = findToken(newPos, parsedTemplate.value);
 
   // Build context for position-aware completions (e.g., steps.*, needs.*, inputs.*)

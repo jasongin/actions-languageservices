@@ -4,7 +4,7 @@ import * as templateReader from "../templates/template-reader.js";
 import {TraceWriter} from "../templates/trace-writer.js";
 import {File} from "./file.js";
 import {WORKFLOW_ROOT} from "./workflow-constants.js";
-import {getWorkflowSchema} from "./workflow-schema.js";
+import {getWorkflowSchema, WorkflowSchemaOptions} from "./workflow-schema.js";
 import {YamlObjectReader} from "./yaml-object-reader.js";
 
 /** @deprecated Use TemplateParseResult instead */
@@ -16,11 +16,21 @@ export type ParseWorkflowResult = TemplateParseResult;
  */
 export function parseWorkflow(entryFile: File, trace: TraceWriter): TemplateParseResult;
 export function parseWorkflow(entryFile: File, context: TemplateContext): TemplateParseResult;
-export function parseWorkflow(entryFile: File, contextOrTrace: TraceWriter | TemplateContext): TemplateParseResult {
+export function parseWorkflow(entryFile: File, trace: TraceWriter, options?: WorkflowSchemaOptions): TemplateParseResult;
+export function parseWorkflow(
+  entryFile: File,
+  context: TemplateContext,
+  options?: WorkflowSchemaOptions
+): TemplateParseResult;
+export function parseWorkflow(
+  entryFile: File,
+  contextOrTrace: TraceWriter | TemplateContext,
+  options?: WorkflowSchemaOptions
+): TemplateParseResult {
   const context =
     contextOrTrace instanceof TemplateContext
       ? contextOrTrace
-      : new TemplateContext(new TemplateValidationErrors(), getWorkflowSchema(), contextOrTrace);
+      : new TemplateContext(new TemplateValidationErrors(), getWorkflowSchema(options), contextOrTrace);
 
   const fileId = context.getFileId(entryFile.name);
   const reader = new YamlObjectReader(fileId, entryFile.content);

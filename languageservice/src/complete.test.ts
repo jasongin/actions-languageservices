@@ -1016,6 +1016,38 @@ jobs:
   });
 });
 
+describe("concurrency queue completion", () => {
+  it("includes queue when allowConcurrencyQueue is enabled", async () => {
+    const input = `on: push
+concurrency:
+  |`;
+    const result = await complete(...getPositionFromCursor(input), {
+      featureFlags: new FeatureFlags({allowConcurrencyQueue: true})
+    });
+
+    expect(result).not.toBeUndefined();
+    const labels = result.map(x => x.label);
+    expect(labels).toContain("group");
+    expect(labels).toContain("cancel-in-progress");
+    expect(labels).toContain("queue");
+  });
+
+  it("excludes queue when allowConcurrencyQueue is disabled", async () => {
+    const input = `on: push
+concurrency:
+  |`;
+    const result = await complete(...getPositionFromCursor(input), {
+      featureFlags: new FeatureFlags({allowConcurrencyQueue: false})
+    });
+
+    expect(result).not.toBeUndefined();
+    const labels = result.map(x => x.label);
+    expect(labels).toContain("group");
+    expect(labels).toContain("cancel-in-progress");
+    expect(labels).not.toContain("queue");
+  });
+});
+
 describe("service container command/entrypoint completion", () => {
   it("suggests entrypoint and command in service container", async () => {
     const input = `on: push

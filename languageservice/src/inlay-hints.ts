@@ -1,3 +1,4 @@
+import type {FeatureFlags} from "@actions/expressions/features";
 import {isString} from "@actions/workflow-parser";
 import {getCronDescription} from "@actions/workflow-parser/model/converter/cron";
 import {TemplateToken} from "@actions/workflow-parser/templates/tokens/template-token";
@@ -15,7 +16,7 @@ import {getOrParseWorkflow} from "./utils/workflow-cache.js";
  * @param document Text document to get inlay hints for
  * @returns Array of inlay hints
  */
-export function getInlayHints(document: TextDocument): InlayHint[] {
+export function getInlayHints(document: TextDocument, featureFlags?: FeatureFlags): InlayHint[] {
   // Inlay hints are only supported for workflow files (cron expressions)
   if (isActionDocument(document.uri)) {
     return [];
@@ -26,7 +27,7 @@ export function getInlayHints(document: TextDocument): InlayHint[] {
     content: document.getText()
   };
 
-  const result = getOrParseWorkflow(file, document.uri);
+  const result = getOrParseWorkflow(file, document.uri, false, featureFlags);
   if (!result?.value) {
     return [];
   }

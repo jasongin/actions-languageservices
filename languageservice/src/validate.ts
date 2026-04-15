@@ -1,4 +1,5 @@
-import {FeatureFlags, Lexer, Parser} from "@actions/expressions";
+import {Lexer, Parser} from "@actions/expressions";
+import {FeatureFlags} from "@actions/expressions/features";
 import {Expr} from "@actions/expressions/ast";
 import {
   TemplateParseResult,
@@ -82,7 +83,12 @@ async function validateWorkflow(textDocument: TextDocument, config?: ValidationC
   const diagnostics: Diagnostic[] = [];
 
   try {
-    const result: TemplateParseResult | undefined = getOrParseWorkflow(file, textDocument.uri);
+    const result: TemplateParseResult | undefined = getOrParseWorkflow(
+      file,
+      textDocument.uri,
+      false,
+      config?.featureFlags
+    );
     if (!result) {
       return [];
     }
@@ -248,7 +254,9 @@ async function additionalValidations(
   validateConcurrencyDeadlock(diagnostics, template);
 
   // Validate incompatible concurrency options
-  validateConcurrencyQueueCancelInProgress(diagnostics, template);
+  if (featureFlags?.isEnabled("allowConcurrencyQueue")) {
+    validateConcurrencyQueueCancelInProgress(diagnostics, template);
+  }
 }
 
 function invalidValue(diagnostics: Diagnostic[], token: StringToken, kind: ValueProviderKind) {
@@ -699,7 +707,7 @@ function checkConcurrencyQueueConflict(diagnostics: Diagnostic[], token: Templat
 
   let hasQueueMax = false;
   let hasCancelInProgressTrue = false;
-  let queueRange: TokenRange | undefined;
+  let queueRange: TokenRange | undefined = token.range;
 
   for (const pair of token) {
     if (!isString(pair.key) || pair.key.isExpression || pair.value.isExpression) {
@@ -707,7 +715,7 @@ function checkConcurrencyQueueConflict(diagnostics: Diagnostic[], token: Templat
     }
     if (pair.key.value === "queue" && isString(pair.value) && pair.value.value === "max") {
       hasQueueMax = true;
-      queueRange = pair.key.range;
+      queueRange = pair.value.range || pair.key.range || token.range;
     }
     if (pair.key.value === "cancel-in-progress" && isBoolean(pair.value) && pair.value.value) {
       hasCancelInProgressTrue = true;

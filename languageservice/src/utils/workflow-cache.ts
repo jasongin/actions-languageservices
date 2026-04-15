@@ -1,3 +1,4 @@
+import type {FeatureFlags} from "@actions/expressions/features";
 import {convertWorkflowTemplate, parseWorkflow, TemplateParseResult, WorkflowTemplate} from "@actions/workflow-parser";
 import {parseAction} from "@actions/workflow-parser/actions/action-parser";
 import {
@@ -19,14 +20,10 @@ const workflowTemplateCache = new Map<string, WorkflowTemplate>();
 const actionTemplateCache = new Map<string, ActionTemplate>();
 
 export function clearCacheEntry(uri: string) {
-  parsedWorkflowCache.delete(uri);
-  parsedWorkflowCache.delete(cacheKey(uri, true));
-  parsedActionCache.delete(uri);
-  parsedActionCache.delete(cacheKey(uri, true));
-  workflowTemplateCache.delete(uri);
-  workflowTemplateCache.delete(cacheKey(uri, true));
-  actionTemplateCache.delete(uri);
-  actionTemplateCache.delete(cacheKey(uri, true));
+  deleteCacheEntries(parsedWorkflowCache, uri);
+  deleteCacheEntries(parsedActionCache, uri);
+  deleteCacheEntries(workflowTemplateCache, uri);
+  deleteCacheEntries(actionTemplateCache, uri);
 }
 
 export function clearCache() {
@@ -41,13 +38,18 @@ export function clearCache() {
  * @param transformed Indicates whether the workflow has been transformed before parsing
  * @returns the {@link TemplateParseResult}
  */
-export function getOrParseWorkflow(file: File, uri: string, transformed = false): TemplateParseResult {
-  const key = cacheKey(uri, transformed);
+export function getOrParseWorkflow(
+  file: File,
+  uri: string,
+  transformed = false,
+  featureFlags?: FeatureFlags
+): TemplateParseResult {
+  const key = cacheKey(uri, transformed, featureFlags);
   const cachedResult = parsedWorkflowCache.get(key);
   if (cachedResult) {
     return cachedResult;
   }
-  const result = parseWorkflow(file, nullTrace);
+  const result = parseWorkflow(file, nullTrace, {featureFlags});
   parsedWorkflowCache.set(key, result);
   return result;
 }
@@ -81,7 +83,7 @@ export async function getOrConvertWorkflowTemplate(
   options?: WorkflowTemplateConverterOptions,
   transformed = false
 ): Promise<WorkflowTemplate> {
-  const key = cacheKey(uri, transformed);
+  const key = cacheKey(uri, transformed, options?.featureFlags);
   const cachedTemplate = workflowTemplateCache.get(key);
   if (cachedTemplate) {
     return cachedTemplate;
@@ -114,9 +116,20 @@ export function getOrConvertActionTemplate(
 }
 
 // Use a separate cache key for transformed documents
-function cacheKey(uri: string, transformed: boolean): string {
-  if (transformed) {
-    return `transformed-${uri}`;
+function deleteCacheEntries<T>(cache: Map<string, T>, uri: string) {
+  const prefixes = [`${uri}::`, `transformed-${uri}::`];
+  for (const key of cache.keys()) {
+    if (prefixes.some(prefix => key.startsWith(prefix))) {
+      cache.delete(key);
+    }
   }
-  return uri;
+}
+
+function cacheKey(uri: string, transformed: boolean, featureFlags?: FeatureFlags): string {
+  const prefix = transformed ? "transformed-" : "";
+  return `${prefix}${uri}::${featureFlagsKey(featureFlags)}`;
+}
+
+function featureFlagsKey(featureFlags?: FeatureFlags): string {
+  return featureFlags ? featureFlags.getEnabledFeatures().join(",") : "";
 }

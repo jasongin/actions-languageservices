@@ -1,3 +1,4 @@
+import {FeatureFlags} from "@actions/expressions/features";
 import {TemplateValidationError} from "./templates/template-validation-error.js";
 import {nullTrace} from "./test-utils/null-trace.js";
 import {parseWorkflow} from "./workflows/workflow-parser.js";
@@ -94,5 +95,48 @@ jobs:
         }
       }
     }
+  });
+
+  it("rejects concurrency queue when the feature is disabled", () => {
+    const result = parseWorkflow(
+      {
+        name: "test.yaml",
+        content: `on: push
+concurrency:
+  group: deploy
+  queue: max
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello`
+      },
+      nullTrace
+    );
+
+    expect(result.context.errors.getErrors()).toContainEqual(
+      expect.objectContaining({rawMessage: "Unexpected value 'queue'"})
+    );
+  });
+
+  it("accepts concurrency queue when the feature is enabled", () => {
+    const result = parseWorkflow(
+      {
+        name: "test.yaml",
+        content: `on: push
+concurrency:
+  group: deploy
+  queue: max
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello`
+      },
+      nullTrace,
+      {featureFlags: new FeatureFlags({allowConcurrencyQueue: true})}
+    );
+
+    expect(result.context.errors.getErrors()).toHaveLength(0);
   });
 });
